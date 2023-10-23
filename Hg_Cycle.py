@@ -62,7 +62,7 @@ class Mercury_cycle:
         evap_a = 1
         
         evap_P_lb = 1.65e-7
-        evap_P_ub = HG_Props.TP_sat(secondary['cond_in'].T - inputs.dT_evap)
+        evap_P_ub = HG_Props.TP_sat(secondary['evap_in'].T - inputs.dT_evap)
         
         while evap_a:
             primary['evap_out'].P = 0.5*(evap_P_lb+evap_P_ub)
@@ -81,8 +81,8 @@ class Mercury_cycle:
                 primary['evap_out'].s = primary['evap_out'].Cp_gas*log(primary['evap_out'].T/primary['evap_out'].T_sat) + HG_Props.S_gas(primary['evap_out'].T_sat)
             
             cond_a = 1
-            cond_P_lb = HG_Props.TP_sat(secondary['evap_in'].T + inputs.dT_cond)
-            cond_P_ub = 20.0e2
+            cond_P_lb = HG_Props.TP_sat(secondary['cond_in'].T + inputs.dT_cond)
+            cond_P_ub = 10000.0
             
             while cond_a:
                 primary['cond_in'].P = 0.5*(cond_P_lb + cond_P_ub)
@@ -189,7 +189,7 @@ class Mercury_cycle:
         
         if primary['cond_in'].h > incond_hg_h_gas: # 과열증기
             primary['cond_in'].Cp_gas = HG_Props.Cp_gas(primary['cond_in'].T)
-            primary['cond_in'].s = primary['cond_in'].Cp_gas*log(primary['cond_in'].T/primary['cond_in'].T_sat)+incond_hg_s_gas_ts
+            primary['cond_in'].s = primary['cond_in'].Cp_gas*log(primary['cond_in'].T/primary['cond_in'].T_sat)+incond_hg_s_gas
         else:
             primary['cond_in'].s = (incond_hg_s_gas - incond_hg_s_liq)*(primary['cond_in'].h - incond_hg_h_liq)/(incond_hg_h_gas - incond_hg_h_liq)+incond_hg_s_liq
         
@@ -268,14 +268,14 @@ if __name__ == '__main__':
     evap_in.P = 1.013e5
     evap_in.fluid = 'Air'
 
-    inputs.dT_evap = 0.0
-    inputs.dT_cond = 0.0
+    inputs.dT_evap = 5.0
+    inputs.dT_cond = 5.0
     inputs.comp_eff = 0.4
     inputs.mech_eff = 0.5
     inputs.DSH = 0.0
     inputs.DSC = 0.0
-    inputs.evap_out_x = 0.8
-    inputs.cond_in_x = 0.1
+    inputs.evap_out_x = 0.4
+    inputs.cond_in_x = 0.2
     
     primary = {"cond_in":cond_in_hg, "cond_out":cond_out_hg, "evap_in":evap_in_hg, "evap_out":evap_out_hg}
     secondary = {"cond_in":cond_in, "cond_out":cond_out, "evap_in":evap_in, "evap_out":evap_out}
@@ -283,3 +283,4 @@ if __name__ == '__main__':
     HG = Mercury_cycle()
     secondary = HG.preprocess(primary, secondary)
     (primary, secondary, outputs) = HG.solver(primary, secondary, inputs, outputs)
+    HG.Plot_diamgram(primary)
