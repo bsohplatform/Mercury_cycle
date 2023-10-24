@@ -4,7 +4,7 @@ class HG_Props:
     @staticmethod
     def TP_sat(T):
         Tcrt = 1764
-        Pcrt = 167*10**3 #kPa
+        Pcrt = 167.0e3 #kPa
         a1 = -4.57618368
         a2 = -1.40726277
         a3 = 2.36263541
@@ -18,17 +18,22 @@ class HG_Props:
     
     @staticmethod
     def PT_sat(P):
-        T1 = 1000
-        while 1:
-            f = HG_Props.TP_sat(T1)-P
-            dfdT = HG_Props.TdPdT_sat(T1)
-            T2 = T1 - f/dfdT
-            if abs(T2-T1) < 1.0e-4:                
-                break
-            else:
-                T1  = T2
-        T = T1
+        T_lb = 0.0
+        T_ub = 1764
         
+        while 1:
+            T = 0.5*(T_lb+T_ub)
+            P1  = HG_Props.TP_sat(T)
+            
+            P_err = P-P1
+            if P_err < 0:
+                T_ub = T
+            else:
+                T_lb = T
+                
+            if abs(P_err) < 1.0e-6:
+                break
+            
         return(T)
     
     @staticmethod
@@ -51,7 +56,7 @@ class HG_Props:
     def H_liq(T):
         [theta, null] = HG_Props.correct_T(T)
         hl = 7.25939*theta-1.36651e-3*theta**2+8.0906e-7*theta**3-1636.13
-        hl = hl*4.184
+        hl = hl*4184.0/200.592
         
         return(hl)
     
@@ -65,7 +70,7 @@ class HG_Props:
         dB0 = HG_Props.dsecond_virial(T0)
         B0 = HG_Props.second_virial(T0)
         hg = 13648.676+4.96797*theta+2022.0*exp(-7136.5/theta)*(B-theta*dB)+0.2503*B0+15.25*dB0+22.53*(T0-theta0)*(dthetadT0+1)+1.419e4*(dthetadT0-1)+4.97*((T-theta)-(T0-theta0))
-        hg = hg*4.184
+        hg = hg*4184.0/200.592
         
         return(hg)
         
@@ -73,8 +78,8 @@ class HG_Props:
     def Cp_liq(T):
         [theta,dthetadT] = HG_Props.correct_T(T)
         Cpl = 7.25939-2.73302e-3*theta+2.42718e-6*theta**2-2.294e8/theta**2*exp(-7136.5/theta)+6.55*(dthetadT-1)+44585/theta*exp(-7136.5/theta)
-        Cpl = 4.184*Cpl
-        
+        Cpl = Cpl*4184.0/200.592
+                
         return(Cpl)
     
     @staticmethod
@@ -85,7 +90,7 @@ class HG_Props:
         dB = HG_Props.dsecond_virial(T)
         ddB = -1310/theta**3*(56.4-B)-655/theta**2*dB
         Cpg = 4.96797-3.186e-5*P*theta*ddB
-        Cpg = 4.184*Cpg
+        Cpg = Cpg*4184.0/200.592
         
         return(Cpg)
     
@@ -98,7 +103,7 @@ class HG_Props:
         B0 = HG_Props.second_virial(T0)
         int_term = HG_Props.integral_term(theta)
         sl = 16.71536*log10(theta)-2.73302e-3*theta+1.21359e-6*theta**2-4.511*(7136.5/theta+1)*exp(-7136.5/theta)-22.559734-0.02422*dB0-4.359e-4*B0+6.55*int_term+11.44*log10(T0/theta0)-00.003577*(T0-theta0)*dthetadT0-22.53*(dthetadT0-1)
-        sl = sl*4.184
+        sl = sl*4184.0/200.592
         
         return(sl)
     
@@ -108,7 +113,7 @@ class HG_Props:
         P = HG_Props.TP_sat(T)*7.50062
         dB = HG_Props.dsecond_virial(T)
         sg = 11.439185*log10(theta)-4.575674*log10(P)+26.6702+11.44*log10(T/theta)-3.186e-5*P*dB
-        sg = sg*4.184
+        sg = sg*4184.0/200.592
         
         return(sg)
     
@@ -143,10 +148,13 @@ class HG_Props:
         B = HG_Props.second_virial(T)
         dB = 655/theta**2*(56.4-B)
         
-        return(B)
+        return(dB)
     
     @staticmethod
     def integral_term(theta):
         int_term = 0.01107*log10(theta)+0.6381/theta-1.1096e-5*theta+3.7405e-9*theta**2-0.0264958
         
         return(int_term)
+
+if __name__ == '__main__':
+    print(HG_Props.S_gas(1350.))

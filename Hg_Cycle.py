@@ -82,7 +82,7 @@ class Mercury_cycle:
             
             cond_a = 1
             cond_P_lb = HG_Props.TP_sat(secondary['cond_in'].T + inputs.dT_cond)
-            cond_P_ub = 10000.0
+            cond_P_ub = 40.0e3
             
             while cond_a:
                 primary['cond_in'].P = 0.5*(cond_P_lb + cond_P_ub)
@@ -112,7 +112,7 @@ class Mercury_cycle:
                 if cond.T_rvs == 1:
                     cond_P_lb = primary['cond_in'].P
                 else:
-                    if cond.T_rvs < 0:
+                    if cond_err < 0:
                         cond_P_ub = primary['cond_in'].P
                     else:
                         cond_P_lb = primary['cond_in'].P
@@ -139,9 +139,9 @@ class Mercury_cycle:
             evap_err = (inputs.dT_evap - evap.T_pp)/inputs.dT_evap
             
             if evap.T_rvs == 1:
-                evap_P_lb = primary['evap_out'].P
+                evap_P_ub = primary['evap_out'].P
             else:
-                if evap.T_rvs < 0:
+                if evap_err < 0:
                     evap_P_lb = primary['evap_out'].P
                 else:
                     evap_P_ub = primary['evap_out'].P
@@ -151,21 +151,26 @@ class Mercury_cycle:
             elif (evap_P_ub - evap_P_lb)/(0.5*(evap_P_ub + evap_P_lb)) < 1.0e-4:
                 evap_a = 0
         
-        outputs.w_comp = comp.W_s*primary['evap_in'].m
+        outputs.W_comp = comp.W_s*primary['evap_in'].m/inputs.mech_eff
         outputs.Q_cond = abs(secondary['cond_in'].Q)
         outputs.Q_evap = abs(secondary['evap_in'].Q)
-        outputs.COP = outputs.Q_cond/outputs.w_comp
+        outputs.COP = outputs.Q_cond/outputs.W_comp
         
         return(primary, secondary, outputs)
     
-    def Plot_diamgram(primary):
-        T_dome = range(-39,800)
-        s_liq_dome = [HG_Props.S_liq(t+273.15) for t in T_dome]
-        s_gas_dome = [HG_Props.S_gas(t+273.15) for t in T_dome]
+    def Plot_diamgram(self, primary):
+        T_dome = [float(t) for t in range(100,1200)]
+        s_liq_dome = [HG_Props.S_liq(t+273.15)/1.0e3 for t in T_dome]
+        s_gas_dome = [HG_Props.S_gas(t+273.15)/1.0e3 for t in T_dome]
         P_dome = [HG_Props.TP_sat(t+273.15) for t in T_dome]
-        h_liq_dome = [HG_Props.H_liq(t+273.15) for t in T_dome]
-        h_gas_dome = [HG_Props.H_gas(t+273.15) for t in T_dome]
-                
+        h_liq_dome = [HG_Props.H_liq(t+273.15)/1.0e3 for t in T_dome]
+        h_gas_dome = [HG_Props.H_gas(t+273.15)/1.0e3 for t in T_dome]
+        
+        h_dome_vec = h_liq_dome + h_gas_dome[::-1]
+        s_dome_vec = s_liq_dome + s_gas_dome[::-1]
+        T_dome_vec = T_dome+T_dome[::-1]
+        P_dome_vec = P_dome+P_dome[::-1]
+        
         incond_hg_s_gas = HG_Props.S_gas(primary['cond_in'].T_sat)
         incond_hg_s_liq = HG_Props.S_liq(primary['cond_in'].T_sat)
         incond_hg_h_gas = HG_Props.H_gas(primary['cond_in'].T_sat)
@@ -184,14 +189,19 @@ class Mercury_cycle:
         outevap_hg_h_gas = HG_Props.H_gas(primary['evap_out'].T_sat)
         outevap_hg_h_liq = HG_Props.H_liq(primary['evap_out'].T_sat)
         
-        s_vec = [primary['evap_out'].s, primary['cond_in'].s]
-        T_vec = [primary['evap_out'].T, primary['cond_in'].T]
+        primary
+        
+        s_vec = [primary['evap_out'].s]
+        T_vec = [primary['evap_out'].T]
         
         if primary['cond_in'].h > incond_hg_h_gas: # 과열증기
             primary['cond_in'].Cp_gas = HG_Props.Cp_gas(primary['cond_in'].T)
             primary['cond_in'].s = primary['cond_in'].Cp_gas*log(primary['cond_in'].T/primary['cond_in'].T_sat)+incond_hg_s_gas
         else:
             primary['cond_in'].s = (incond_hg_s_gas - incond_hg_s_liq)*(primary['cond_in'].h - incond_hg_h_liq)/(incond_hg_h_gas - incond_hg_h_liq)+incond_hg_s_liq
+            
+        s_vec.append(primary['cond_in'].s)
+        T_vec.append(primary['cond_in'].T)
         
         if primary['cond_out'].h < outcond_hg_h_liq:
             primary['cond_out'].Cp_liq = HG_Props.Cp_liq(primary['cond_out'].T)
@@ -216,30 +226,45 @@ class Mercury_cycle:
         T_vec.append(primary['evap_out'].T)
         
         h_vec = [primary['evap_out'].h, primary['cond_in'].h, primary['cond_out'].h, primary['evap_in'].h, primary['evap_out'].h]
-        P_vec = [primary['evap_out'].P, primary['cond_in'].P, primary['cond_out'].P, primary['evap_in'].h, primary['evap_out'].P]
+        P_vec = [primary['evap_out'].P, primary['cond_in'].P, primary['cond_out'].P, primary['evap_in'].P, primary['evap_out'].P]
         
         fig_ph, ax_ph = plt.subplots()
-        ax_ph.plot([i/1.0e3 for i in h_liq_dome], [i for i in P_dome], [i/1.0e3 for i in h_gas_dome[::-1]], [i for i in P_dome[::-1]])
+        ax_ph.plot(h_dome_vec, P_dome_vec, 'b')
         ax_ph.plot([i/1.0e3 for i in h_vec], [i for i in P_vec], 'b--')
         ax_ph.set_xlabel('Enthalpy [kJ/kg]',fontsize = 15)
         ax_ph.set_ylabel('Pressure [kPa]',fontsize = 15)
         ax_ph.set_title('Pressure-Enthalpy Diagram')
+        ax_ph.set_ylim([max(primary['evap_out'].P*0.7,0.0), min(primary['cond_in'].P*1.3,max(P_dome))])
         ax_ph.tick_params(axis = 'x', labelsize = 13)
         ax_ph.tick_params(axis = 'y', labelsize = 13)
         
         fig_ts, ax_ts = plt.subplots()
-        ax_ts.plot([i/1.0e3 for i in s_liq_dome], [i for i in T_dome], [i/1.0e3 for i in s_gas_dome[::-1]], [i for i in T_dome[::-1]])
+        ax_ts.plot(s_dome_vec, T_dome_vec, 'b')
         ax_ts.plot([i/1.0e3 for i in s_vec], [i-273.15 for i in T_vec], 'b--')
         ax_ts.set_xlabel('Entropy [kJ/kg-K]',fontsize = 15)
         ax_ts.set_ylabel('Temperature [℃]',fontsize = 15)
         ax_ts.set_title('Temperature-Entropy Diagram')
+        ax_ts.set_ylim([100, 1200])
         ax_ts.tick_params(axis = 'x', labelsize = 13)
         ax_ts.tick_params(axis = 'y', labelsize = 13)
         
-        fig_ph.save_fig('.\Ph_diagram.png',dpi=300)
-        fig_ts.save_fig('.\Ts_diagram.png',dpi=300)
-
-
+        fig_ph.savefig('.\Ph_diagram.png',dpi=300)
+        fig_ts.savefig('.\Ts_diagram.png',dpi=300)
+        
+    def Post_Process(self, primary, secondary, inputs, outputs):
+        print("COP: %.3f" %(outputs.COP))
+        print("Q_cond: %.3f [kW]" %(outputs.Q_cond/1.0e3))
+        print("Q_evap: %.3f [kW]" %(outputs.Q_evap/1.0e3))
+        print("W_comp: %.3f [kW]" %(outputs.W_comp/1.0e3))
+        print("Comp_eff: %.3f [%%], Mech_eff: %.3f [%%]" %(inputs.comp_eff*100, inputs.mech_eff*100))
+        print("Compression ratio: %.3f" %(primary['cond_in'].P/primary['evap_out'].P))
+        print("[Mercury side evap state] T_in: %.3f [℃], P_in: %.3f [kPa], T_out: %.3f [℃], P_out: %.3f [kPa]" %(primary['evap_in'].T-273.15, primary['evap_in'].P, primary['evap_out'].T-273.15, primary['evap_out'].P))
+        print("[Mercury side cond state] T_in: %.3f [℃], P_in: %.3f [kPa], T_out: %.3f [℃], P_out: %.3f [kPa], mdot: %.3f [kg/s]" %(primary['cond_in'].T-273.15, primary['cond_in'].P, primary['cond_out'].T-273.15, primary['cond_out'].P, primary['evap_in'].m))
+        print("[Process side evap state] T_in: %.3f [℃], P_in: %.3f [kPa], T_out: %.3f [℃], P_out: %.3f [kPa], mdot: %.3f [kg/s]" %(secondary['evap_in'].T-273.15, secondary['evap_in'].P/1.0e3, secondary['evap_out'].T-273.15, secondary['evap_out'].P/1.0e3, secondary['evap_in'].m))
+        print("[Process side cond state] T_in: %.3f [℃], P_in: %.3f [kPa], T_out: %.3f [℃], P_out: %.3f [kPa], mdot: %.3f [kg/s]" %(secondary['cond_in'].T-273.15, secondary['cond_in'].P/1.0e3, secondary['cond_out'].T-273.15, secondary['cond_out'].P/1.0e3, secondary['cond_in'].m))
+        print('-------------------------------------------------------------------')
+        
+        
 if __name__ == '__main__':
 
     cond_in = Props()
@@ -256,26 +281,27 @@ if __name__ == '__main__':
     outputs = outputs()
 
 
-    cond_in.T = 600 + 273.15
-    cond_out.T = 620 + 273.15
+    cond_in.T = 500 + 273.15
+    cond_out.T = 510 + 273.15
     cond_in.m = 1.0
     cond_in.P = 1.013e5
     cond_out.P = 1.013e5
-    cond_in.fluid = 'Air'
+    cond_in.fluid = 'air'
 
-    evap_in.T = 400 + 273.15
-    evap_in.T = 380 + 273.15
+    evap_in.T = 300 + 273.15
+    evap_out.T = 290 + 273.15
     evap_in.P = 1.013e5
-    evap_in.fluid = 'Air'
+    evap_out.P = 1.013e5
+    evap_in.fluid = 'air'
 
     inputs.dT_evap = 5.0
     inputs.dT_cond = 5.0
-    inputs.comp_eff = 0.4
-    inputs.mech_eff = 0.5
+    inputs.comp_eff = 0.95
+    inputs.mech_eff = 0.6
     inputs.DSH = 0.0
     inputs.DSC = 0.0
     inputs.evap_out_x = 0.4
-    inputs.cond_in_x = 0.2
+    inputs.cond_out_x = 0.005
     
     primary = {"cond_in":cond_in_hg, "cond_out":cond_out_hg, "evap_in":evap_in_hg, "evap_out":evap_out_hg}
     secondary = {"cond_in":cond_in, "cond_out":cond_out, "evap_in":evap_in, "evap_out":evap_out}
@@ -284,3 +310,4 @@ if __name__ == '__main__':
     secondary = HG.preprocess(primary, secondary)
     (primary, secondary, outputs) = HG.solver(primary, secondary, inputs, outputs)
     HG.Plot_diamgram(primary)
+    HG.Post_Process(primary, secondary, inputs, outputs)
