@@ -14,12 +14,14 @@ class HX:
         T_primary = np.zeros(shape=(N_element+1))
         P_primary = np.zeros(shape=(N_element+1))
         T_secondary = np.zeros(shape=(N_element+1))
+        h_secondary = np.zeros(shape=(N_element+1))
         P_secondary = np.zeros(shape=(N_element+1))
         dT = np.zeros(shape=(N_element+1))
         
         P_primary[0]= self.primary_in.P
         T_primary[0]= self.primary_in.T
-        h_primary[0]= self.primary_in.h        
+        h_primary[0]= self.primary_in.h
+        h_secondary[0]= self.secondary_out.h
         T_secondary[0]= self.secondary_out.T
         P_secondary[0]= self.secondary_out.P
         
@@ -48,7 +50,8 @@ class HX:
                 T_primary[i+1] = T_sat_now
             
             P_secondary[i+1] = P_secondary[i] + (self.secondary_in.P - self.secondary_out.P)/N_element
-            T_secondary[i+1] = T_secondary[i] + self.primary_in.Q/N_element/self.secondary_in.m/self.secondary_in.Cp
+            h_secondary[i+1] = h_secondary[i] + self.primary_in.Q/N_element/self.secondary_in.m
+            T_secondary[i+1] = CP.PropsSI("T","H",h_secondary[i+1],"P",P_secondary[i+1],self.secondary_in.fluid)
     
             dT[i+1] = T_primary[i+1] - T_secondary[i+1]
             if (dT[i+1] < 0.0 and self.primary_in.Q < 0.0) or (dT[i+1] > 0.0 and self.primary_in.Q > 0.0):

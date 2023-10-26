@@ -50,13 +50,14 @@ class Mercury_cycle:
         print('---------------------------계산시작---------------------------------')
         
     def preprocess(self, primary, secondary):
-       secondary['evap_in'].Cp = CP.PropsSI("C","T",secondary['evap_in'].T,"P",secondary['evap_in'].P,secondary['evap_in'].fluid)
-       
-       secondary['cond_in'].Cp = CP.PropsSI("C","T",secondary['cond_in'].T,"P",secondary['cond_in'].P,secondary['cond_in'].fluid)
-       
-       secondary['cond_in'].Q = secondary['cond_in'].Cp*(secondary['cond_out'].T - secondary['cond_in'].T)*secondary['cond_in'].m
-       primary['cond_in'].Q = -secondary['cond_in'].Q
-       return(secondary)
+        secondary['evap_in'].h = CP.PropsSI("H","T",secondary['evap_in'].T,"P",secondary['evap_in'].P,secondary['evap_in'].fluid)
+        secondary['evap_out'].h = CP.PropsSI("H","T",secondary['evap_out'].T,"P",secondary['evap_out'].P,secondary['evap_in'].fluid)
+        secondary['cond_in'].h = CP.PropsSI("H","T",secondary['cond_in'].T,"P",secondary['cond_in'].P,secondary['cond_in'].fluid)
+        secondary['cond_out'].h = CP.PropsSI("H","T",secondary['cond_out'].T,"P",secondary['cond_out'].P,secondary['cond_in'].fluid)
+        secondary['cond_in'].Q = (secondary['cond_out'].h - secondary['cond_in'].h)*secondary['cond_in'].m
+        primary['cond_in'].Q = -secondary['cond_in'].Q
+        
+        return(secondary)
        
     def solver(self, primary, secondary, inputs, outputs):
         evap_a = 1
@@ -131,7 +132,7 @@ class Mercury_cycle:
                     
             primary['evap_in'].Q = primary['evap_in'].m*(primary['evap_out'].h - primary['evap_in'].h)
             secondary['evap_in'].Q = -primary['evap_in'].Q
-            secondary['evap_in'].m = secondary['evap_in'].Q/(secondary['evap_out'].T - secondary['evap_in'].T)/secondary['evap_in'].Cp
+            secondary['evap_in'].m = secondary['evap_in'].Q/(secondary['evap_out'].h - secondary['evap_in'].h)
             
             evap = HX(primary['evap_in'], primary['evap_out'], secondary['evap_in'], secondary['evap_out'])
             evap.PHE(inputs.N_element)
@@ -281,21 +282,23 @@ if __name__ == '__main__':
     outputs = outputs()
 
 
-    cond_in.T = 500 + 273.15
-    cond_out.T = 510 + 273.15
+    cond_in.T = 350 + 273.15
+    cond_out.T = 400 + 273.15
     cond_in.m = 1.0
-    cond_in.P = 1.013e5
-    cond_out.P = 1.013e5
-    cond_in.fluid = 'air'
+    cond_in.P = 18.0e6
+    cond_out.P = 18.0e6
+    cond_in.fluid = 'water'
 
-    evap_in.T = 300 + 273.15
-    evap_out.T = 290 + 273.15
-    evap_in.P = 1.013e5
-    evap_out.P = 1.013e5
-    evap_in.fluid = 'air'
+    evap_in.T = 270 + 273.15
+    evap_out.T = 260 + 273.15
+    evap_in.P = 5.0e6
+    evap_out.P = 5.0e6
+    evap_in.fluid = 'water'
 
     inputs.dT_evap = 5.0
     inputs.dT_cond = 5.0
+    inputs.dP_cond = 0.01
+    inputs.dP_evap = 0.01
     inputs.comp_eff = 0.95
     inputs.mech_eff = 0.6
     inputs.DSH = 0.0

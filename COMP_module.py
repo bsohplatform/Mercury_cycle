@@ -9,25 +9,31 @@ class COMP:
         self.comp_eff = comp_eff
         
     def __call__(self):
-        cond_in_T_sat = HG_Props.PT_sat(self.cond_in.P)
-        cond_in_s_gas = HG_Props.S_gas(cond_in_T_sat)
+        cond_in_s_gas = HG_Props.S_gas(self.cond_in.T_sat)
     
         if cond_in_s_gas < self.evap_out.s:
-            cond_in_T_ideal = cond_in_T_sat
+            mid_Tsat_lb = self.evap_out.T_sat
+            mid_Tsat_ub = self.cond_in.T_sat
             while 1:
-                cond_in_s_ideal = self.cond_in.Cp_gas*log(cond_in_T_ideal/self.evap_out.T)+self.evap_out.s
-                dsdT = self.cond_in.Cp_gas/cond_in_T_ideal
-                cond_in_T1_ideal = cond_in_T_ideal - (cond_in_s_ideal - self.evap_out.s)/dsdT;
-                if abs(cond_in_T1_ideal - cond_in_T_ideal) < 1.0e-4:
-                    break
+                mid_Tsat = 0.5*(mid_Tsat_lb + mid_Tsat_ub)
+                mid_s_gas = HG_Props.S_gas(mid_Tsat)
+                s_err = (self.evap_out.s - mid_s_gas)/self.evap_out.s
+                if s_err < 0.0:
+                    mid_Tsat_lb = mid_Tsat
                 else:
-                    cond_in_T_ideal = cond_in_T1_ideal
+                    mid_Tsat_ub = mid_Tsat
+                if abs(s_err) <= 1.0e-6:
+                    break
+                    
             
-            cond_in_h_ideal = self.cond_in.Cp_gas*(cond_in_T_ideal - cond_in_T_sat)+HG_Props.H_gas(cond_in_T_sat)
+            mid_Cp = HG_Props.Cp_gas(mid_Tsat)
+            gamma = mid_Cp/(mid_Cp-8314.0/200.592)
+            cond_in_T_ideal = self.evap_out.T*(self.cond_in.P/self.evap_out.P)**((gamma-1)/gamma)
+            cond_in_h_ideal = mid_Cp*(cond_in_T_ideal - self.cond_in.T_sat)+HG_Props.H_gas(mid_Tsat)
             self.cond_in.h = (cond_in_h_ideal - self.evap_out.h)/self.comp_eff + self.evap_out.h
             self.cond_in.T = (self.cond_in.h - self.evap_out.h)/self.cond_in.Cp_gas + self.evap_out.T
         else:
-            cond_in_s_liq = HG_Props.S_liq(cond_in_T_sat)
+            cond_in_s_liq = HG_Props.S_liq(self.cond_in.T_sat)
             x = 0.5
             while 1:
                 cond_in_s_ideal = (cond_in_s_gas - cond_in_s_liq)*x + cond_in_s_liq
@@ -38,9 +44,9 @@ class COMP:
                 else:
                     x = x1
             
-            cond_in_h_ideal = (HG_Props.H_gas(cond_in_T_sat)-HG_Props.H_liq(cond_in_T_sat))*x + HG_Props.H_liq(cond_in_T_sat)
+            cond_in_h_ideal = (HG_Props.H_gas(self.cond_in.T_sat)-HG_Props.H_liq(self.cond_in.T_sat))*x + HG_Props.H_liq(self.cond_in.T_sat)
             self.cond_in.h = (cond_in_h_ideal - self.evap_out.h)/self.comp_eff + self.evap_out.h
-            self.cond_in.T = cond_in_T_sat
+            self.cond_in.T = self.cond_in.T_sat
         
         self.W_s = (self.cond_in.h - self.evap_out.h)
         return(self.cond_in.T, self.cond_in.h)
