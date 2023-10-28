@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import CoolProp.CoolProp as CP
 from HX_module import HX
 from COMP_module import COMP
@@ -42,9 +42,9 @@ class outputs:
     W_comp: float = 0.0
     Q_cond: float = 0.0
     Q_evap: float = 0.0
-
-
-
+    T_cond_sec: list = field(default_factory=list)
+    T_evap_sec: list = field(default_factory=list)
+    
 class Mercury_cycle:
     def __init__(self):
         print('---------------------------계산시작---------------------------------')
@@ -106,7 +106,7 @@ class Mercury_cycle:
                 primary['evap_in'].m = primary['cond_in'].m
                 
                 cond = HX(primary['cond_in'], primary['cond_out'], secondary['cond_in'], secondary['cond_out'])
-                cond.PHE(inputs.N_element)
+                outputs.T_cond_sec = cond.PHE(inputs.N_element)
                 
                 cond_err = (inputs.dT_cond - cond.T_pp)/inputs.dT_cond
                 
@@ -135,7 +135,7 @@ class Mercury_cycle:
             secondary['evap_in'].m = secondary['evap_in'].Q/(secondary['evap_out'].h - secondary['evap_in'].h)
             
             evap = HX(primary['evap_in'], primary['evap_out'], secondary['evap_in'], secondary['evap_out'])
-            evap.PHE(inputs.N_element)
+            outputs.T_evap_sec = evap.PHE(inputs.N_element)
             
             evap_err = (inputs.dT_evap - evap.T_pp)/inputs.dT_evap
             
@@ -190,8 +190,6 @@ class Mercury_cycle:
         outevap_hg_h_gas = HG_Props.H_gas(primary['evap_out'].T_sat)
         outevap_hg_h_liq = HG_Props.H_liq(primary['evap_out'].T_sat)
         
-        primary
-        
         s_vec = [primary['evap_out'].s]
         T_vec = [primary['evap_out'].T]
         
@@ -229,23 +227,29 @@ class Mercury_cycle:
         h_vec = [primary['evap_out'].h, primary['cond_in'].h, primary['cond_out'].h, primary['evap_in'].h, primary['evap_out'].h]
         P_vec = [primary['evap_out'].P, primary['cond_in'].P, primary['cond_out'].P, primary['evap_in'].P, primary['evap_out'].P]
         
+        s_evap_sec = [(primary['evap_in'].s+i*(primary['evap_out'].s - primary['evap_in'].s)/len(outputs.T_evap_sec))/1.0e3 for i in range(len(outputs.T_evap_sec))]
+        s_cond_sec = [(primary['cond_out'].s+i*(primary['cond_in'].s - primary['cond_out'].s)/len(outputs.T_cond_sec))/1.0e3 for i in range(len(outputs.T_cond_sec))]
+        T_evap_sec = [t - 273.15 for t in outputs.T_evap_sec]
+        T_cond_sec = [t - 273.15 for t in outputs.T_cond_sec]
+        
         fig_ph, ax_ph = plt.subplots()
         ax_ph.plot(h_dome_vec, P_dome_vec, 'b')
         ax_ph.plot([i/1.0e3 for i in h_vec], [i for i in P_vec], 'b--')
         ax_ph.set_xlabel('Enthalpy [kJ/kg]',fontsize = 15)
         ax_ph.set_ylabel('Pressure [kPa]',fontsize = 15)
         ax_ph.set_title('Pressure-Enthalpy Diagram')
-        ax_ph.set_ylim([max(primary['evap_out'].P*0.7,0.0), min(primary['cond_in'].P*1.3,max(P_dome))])
+        ax_ph.set_ylim([max(primary['evap_out'].P*0.5,0.0), min(primary['cond_in'].P*1.5,max(P_dome))])
         ax_ph.tick_params(axis = 'x', labelsize = 13)
         ax_ph.tick_params(axis = 'y', labelsize = 13)
         
         fig_ts, ax_ts = plt.subplots()
         ax_ts.plot(s_dome_vec, T_dome_vec, 'b')
         ax_ts.plot([i/1.0e3 for i in s_vec], [i-273.15 for i in T_vec], 'b--')
+        ax_ts.plot(s_evap_sec, T_evap_sec, s_cond_sec, T_cond_sec[::-1], 'r')
         ax_ts.set_xlabel('Entropy [kJ/kg-K]',fontsize = 15)
         ax_ts.set_ylabel('Temperature [℃]',fontsize = 15)
         ax_ts.set_title('Temperature-Entropy Diagram')
-        ax_ts.set_ylim([100, 1200])
+        ax_ts.set_ylim([200, 600])
         ax_ts.tick_params(axis = 'x', labelsize = 13)
         ax_ts.tick_params(axis = 'y', labelsize = 13)
         
@@ -283,7 +287,7 @@ if __name__ == '__main__':
 
 
     cond_in.T = 350 + 273.15
-    cond_out.T = 400 + 273.15
+    cond_out.T = 360 + 273.15
     cond_in.m = 1.0
     cond_in.P = 18.0e6
     cond_out.P = 18.0e6

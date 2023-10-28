@@ -63,3 +63,5 @@ class HX:
         
         self.primary_out.T = T_primary[N_element]
         self.primary_out.h = h_primary[N_element]
+        
+        return(T_secondary)
