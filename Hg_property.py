@@ -1,6 +1,7 @@
 from math import exp, log10
 
 class HG_Props:
+    
     @staticmethod
     def TP_sat(T):
         Tcrt = 1764
@@ -15,7 +16,21 @@ class HG_Props:
         P = Pcrt*exp((Tcrt/T)*(a1*tau+a2*tau**1.89+a3*tau**2+a4*tau**8+a5*tau**8.5+a6*tau**9))
         
         return(P)
-    
+    '''
+    def TP_sat(T):
+        [theta, null] = HG_Props.correct_T(T)
+        c1 = 11.257555
+        c2 = -3339.202/theta
+        c3 = -1.153092*log10(theta)
+        c4 = 2.95697e-4*theta
+        c5 = -7.4588e-8*theta**2
+        c6 = -1.56505e-11*theta**3
+        c7 = 3.600*exp(-5360/theta)
+        
+        P = exp(c1+c2+c3+c4+c5+c6+c7)*101.325/760
+        
+        return(P)
+    '''
     @staticmethod
     def PT_sat(P):
         T_lb = 0.0
@@ -35,23 +50,7 @@ class HG_Props:
                 break
             
         return(T)
-    
-    @staticmethod
-    def TdPdT_sat(T):
-        Tcrt = 1764
-        a1 = -4.57618368
-        a2 = -1.40726277
-        a3 = 2.36263541
-        a4 = -31.0889985
-        a5 = 58.0183959
-        a6 = -27.6304546
-        tau = 1-T/Tcrt
-        dtaudT = -1/Tcrt
-        P = HG_Props.TP_sat(T)
-        dPdT = P*((-Tcrt/T**2)*(a1*tau+a2*tau**1.89+a3*tau**2+a4*tau**8+a5*tau**8.5+a6*tau**9)+(Tcrt/T)*(a1+a2*tau**0.89+a3*tau+a4*tau**7+a5*tau**7.5+a6*tau**8)*dtaudT)
-        
-        return(dPdT)
-    
+
     @staticmethod
     def H_liq(T):
         [theta, null] = HG_Props.correct_T(T)
@@ -155,6 +154,40 @@ class HG_Props:
         int_term = 0.01107*log10(theta)+0.6381/theta-1.1096e-5*theta+3.7405e-9*theta**2-0.0264958
         
         return(int_term)
-
+    
 if __name__ == '__main__':
-    print(HG_Props.S_gas(1350.))
+    
+    print(HG_Props.TP_sat(500+273.15))
+    import matplotlib.pyplot as plt
+    T_dome = [float(t) for t in range(100,1490)]
+    s_liq_dome = [HG_Props.S_liq(t+273.15)/1.0e3 for t in T_dome]
+    s_gas_dome = [HG_Props.S_gas(t+273.15)/1.0e3 for t in T_dome]
+    P_dome = [HG_Props.TP_sat(t+273.15)/1.0e3 for t in T_dome]
+    h_liq_dome = [HG_Props.H_liq(t+273.15)/1.0e3 for t in T_dome]
+    h_gas_dome = [HG_Props.H_gas(t+273.15)/1.0e3 for t in T_dome]
+    
+    h_dome_vec = h_liq_dome + h_gas_dome[::-1]
+    s_dome_vec = s_liq_dome + s_gas_dome[::-1]
+    T_dome_vec = T_dome+T_dome[::-1]
+    P_dome_vec = P_dome+P_dome[::-1]
+    
+    fig_ph, ax_ph = plt.subplots()
+    ax_ph.plot(h_dome_vec, P_dome_vec, 'k--', linewidth=1)
+    ax_ph.set_xlabel('Enthalpy [kJ/kg]',fontsize = 15)
+    ax_ph.set_ylabel('Pressure [kPa]',fontsize = 15)
+    ax_ph.set_title('Pressure-Enthalpy Dome')
+    ax_ph.set_ylim([0, 155.0])
+    ax_ph.tick_params(axis = 'x', labelsize = 13)
+    ax_ph.tick_params(axis = 'y', labelsize = 13)
+    
+    fig_ts, ax_ts = plt.subplots()
+    ax_ts.plot(s_dome_vec, T_dome_vec, 'k--', linewidth=1)
+    ax_ts.set_xlabel('Entropy [kJ/kg-K]',fontsize = 15)
+    ax_ts.set_ylabel('Temperature [℃]',fontsize = 15)
+    ax_ts.set_title('Temperature-Entropy Dome')
+    ax_ts.set_ylim([0, 1490])
+    ax_ts.tick_params(axis = 'x', labelsize = 13)
+    ax_ts.tick_params(axis = 'y', labelsize = 13)
+    
+    fig_ph.savefig('.\Ph_diagram_dome.png',dpi=300)
+    fig_ts.savefig('.\Ts_diagram_dome.png',dpi=300)
