@@ -246,12 +246,13 @@ class Mercury_cycle:
         fig_ts, ax_ts = plt.subplots()
         ax_ts.plot(s_dome_vec, T_dome_vec, 'k--', linewidth=1)
         ax_ts.plot([i/1.0e3 for i in s_vec], [i-273.15 for i in T_vec], 'ko-')
-        ax_ts.plot(s_evap_sec, T_evap_sec, 'b-', s_cond_sec, T_cond_sec[::-1], 'r-')
+        #ax_ts.plot(s_evap_sec, T_evap_sec, 'b-', s_cond_sec, T_cond_sec[::-1], 'r-')
         ax_ts.set_xlabel('Entropy [kJ/kg-K]',fontsize = 15)
         ax_ts.set_ylabel('Temperature [℃]',fontsize = 15)
         ax_ts.set_title('Temperature-Entropy Diagram (Mercury)')
-        ax_ts.set_xlim([max(primary['evap_in'].s/1.0e3*0.8,0.0), min(primary['evap_out'].s/1.0e3*1.2,max(s_gas_dome))])
-        ax_ts.set_ylim([max((primary['evap_out'].T-273.15)*0.8,0.0), min((primary['cond_in'].T-273.15)*1.2,max(T_dome))])
+        ax_ts.set_xlim([max(primary['evap_in'].s/1.0e3*0.9,0.0), min(primary['evap_out'].s/1.0e3*1.1,max(s_gas_dome))])
+        #ax_ts.set_ylim([max((primary['evap_out'].T-273.15)*0.9,0.0), min((primary['cond_in'].T-273.15)*1.1,max(T_dome))])
+        ax_ts.set_ylim([200, 600])
         ax_ts.tick_params(axis = 'x', labelsize = 13)
         ax_ts.tick_params(axis = 'y', labelsize = 13)
         
@@ -295,8 +296,8 @@ if __name__ == '__main__':
     cond_out.P = 24.6e6
     cond_in.fluid = 'water'
 
-    evap_in.T = 270 + 273.15
-    evap_out.T = 260 + 273.15
+    evap_in.T = 300 + 273.15
+    evap_out.T = 290 + 273.15
     evap_in.P = 5.0e6
     evap_out.P = 5.0e6
     evap_in.fluid = 'water'
