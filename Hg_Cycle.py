@@ -97,7 +97,7 @@ class Mercury_cycle:
                 if inputs.DSC == 0:
                     primary['cond_out'].h = (HG_Props.H_gas(primary['cond_out'].T_sat)-HG_Props.H_liq(primary['cond_out'].T_sat))*inputs.cond_out_x+HG_Props.H_liq(primary['cond_out'].T_sat)
                 else:
-                    primary['cond_out'].h = HG_Props.H_liq(primary['cond_out'].T_sat) - primary['cond_out'].Cp_liq*(HG_Props.H_gas(primary['cond_out'].T_sat)-primary['cond_out'].T)
+                    primary['cond_out'].h = HG_Props.H_liq(primary['cond_out'].T_sat) - primary['cond_out'].Cp_liq*(primary['cond_out'].T_sat-primary['cond_out'].T)
                 
                 comp = COMP(primary['evap_out'], primary['cond_in'], inputs.comp_eff)
                 [primary['cond_in'].T, primary['cond_in'].h] = comp()
@@ -238,7 +238,8 @@ class Mercury_cycle:
         ax_ph.set_xlabel('Enthalpy [kJ/kg]',fontsize = 15)
         ax_ph.set_ylabel('Pressure [kPa]',fontsize = 15)
         ax_ph.set_title('Pressure-Enthalpy Diagram (Mercury)')
-        ax_ph.set_ylim([max(primary['evap_out'].P*0.5,0.0), min(primary['cond_in'].P*1.5,max(P_dome))])
+        ax_ph.set_xlim([max(primary['evap_in'].h/1.0e3*0.8,0.0), min(primary['cond_in'].h/1.0e3*1.2,max(h_gas_dome))])
+        ax_ph.set_ylim([max(primary['evap_out'].P*0.8,0.0), min(primary['cond_in'].P*1.2,max(P_dome))])
         ax_ph.tick_params(axis = 'x', labelsize = 13)
         ax_ph.tick_params(axis = 'y', labelsize = 13)
         
@@ -249,7 +250,8 @@ class Mercury_cycle:
         ax_ts.set_xlabel('Entropy [kJ/kg-K]',fontsize = 15)
         ax_ts.set_ylabel('Temperature [℃]',fontsize = 15)
         ax_ts.set_title('Temperature-Entropy Diagram (Mercury)')
-        ax_ts.set_ylim([200, 600])
+        ax_ts.set_xlim([max(primary['evap_in'].s/1.0e3*0.8,0.0), min(primary['evap_out'].s/1.0e3*1.2,max(s_gas_dome))])
+        ax_ts.set_ylim([max((primary['evap_out'].T-273.15)*0.8,0.0), min((primary['cond_in'].T-273.15)*1.2,max(T_dome))])
         ax_ts.tick_params(axis = 'x', labelsize = 13)
         ax_ts.tick_params(axis = 'y', labelsize = 13)
         
@@ -286,11 +288,11 @@ if __name__ == '__main__':
     outputs = outputs()
 
 
-    cond_in.T = 350 + 273.15
-    cond_out.T = 360 + 273.15
+    cond_in.T = 500 + 273.15
+    cond_out.T = 550 + 273.15
     cond_in.m = 1.0
-    cond_in.P = 18.0e6
-    cond_out.P = 18.0e6
+    cond_in.P = 24.6e6
+    cond_out.P = 24.6e6
     cond_in.fluid = 'water'
 
     evap_in.T = 270 + 273.15
@@ -308,7 +310,7 @@ if __name__ == '__main__':
     inputs.DSH = 0.0
     inputs.DSC = 0.0
     inputs.evap_out_x = 0.4
-    inputs.cond_out_x = 0.005
+    inputs.cond_out_x = 0.00001
     
     primary = {"cond_in":cond_in_hg, "cond_out":cond_out_hg, "evap_in":evap_in_hg, "evap_out":evap_out_hg}
     secondary = {"cond_in":cond_in, "cond_out":cond_out, "evap_in":evap_in, "evap_out":evap_out}
